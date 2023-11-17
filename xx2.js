@@ -6,6 +6,7 @@ const bodyParser = require('body-parser');
 const app = express();
 const port = 3000;
 
+
 // JSON 파싱을 위한 미들웨어
 app.use(bodyParser.json());
 
