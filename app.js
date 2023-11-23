@@ -169,12 +169,64 @@ app.post('/purchase', (req, res) => {
   );
 });
 
+// 사용자 정보 조회
+app.get('/user/:userId', (req, res) => {
+    const userId = req.params.userId;
+
+    db.get('SELECT * FROM users WHERE id = ?', [userId], (err, user) => {
+        if (err) {
+            console.error(err.message);
+            res.status(500).json({ error: 'Internal Server Error' });
+        } else if (user) {
+            res.json({ user });
+        } else {
+            res.status(404).json({ error: 'User not found' });
+        }
+    });
+});
+
+// 사용자 정보 갱신 (스테이지 및 소지한 골드)
+app.post('/user/:userId/update', (req, res) => {
+    const userId = req.params.userId;
+    const { currentStage, gold } = req.body;
+
+    db.run(
+        'UPDATE users SET current_stage = ?, gold = ? WHERE id = ?',
+        [currentStage, gold, userId],
+        function (err) {
+            if (err) {
+                console.error(err.message);
+                res.status(500).json({ error: 'Internal Server Error' });
+            } else {
+                res.json({ success: true, message: 'User information updated successfully' });
+            }
+        }
+    );
+});
+
+// Unity 클라이언트에서 호출할 함수
+app.get('/user/:userId/info', (req, res) => {
+    const userId = req.params.userId;
+
+    db.get('SELECT * FROM users WHERE id = ?', [userId], (err, user) => {
+        if (err) {
+            console.error(err.message);
+            res.status(500).json({ error: 'Internal Server Error' });
+        } else if (user) {
+            res.json({
+                currentStage: user.current_stage,
+                gold: user.gold
+            });
+        } else {
+            res.status(404).json({ error: 'User not found' });
+        }
+    });
+});
+
 
 app.listen(port, () => {
   console.log(`Hero Server가 포트 ${port}에서 실행 중입니다.`);
 });
-
-
 
 
 
