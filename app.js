@@ -223,6 +223,17 @@ app.get('/user/:userId/info', (req, res) => {
     });
 });
 
+//   client ... get 
+//   $"{serverUrl}/user/{userId}/info"
+//   
+//   UserInfoRes response = JsonUtility.FromJson<UserInfoRes>(www.downloadHandler.text);
+//   
+//   [System.Serializable]
+//   public class UserInfoRes
+//   {
+//       public int currentStage;
+//       public int gold;
+//   }
 
 app.listen(port, () => {
   console.log(`Hero Server가 포트 ${port}에서 실행 중입니다.`);
