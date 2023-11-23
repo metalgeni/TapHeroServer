@@ -224,6 +224,7 @@ app.get('/user/:userId/info', (req, res) => {
 });
 
 //   client ... get 
+//   private string serverUrl = "http://localhost:3000"; // Express 서버 주소
 //   $"{serverUrl}/user/{userId}/info"
 //   
 //   UserInfoRes response = JsonUtility.FromJson<UserInfoRes>(www.downloadHandler.text);
