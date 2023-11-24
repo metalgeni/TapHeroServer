@@ -47,9 +47,37 @@ public class BasicResponse
     public string message;
 }
 
+// 응답 클래스
+[System.Serializable]
+public class ItemsResponse
+{
+    public List<Item> items;
+}
 
+[System.Serializable]
+public class InventoryResponse
+{
+    public List<InventoryItem> inventory;
+}
 
-public class ClickerGameManager : MonoBehaviour
+[System.Serializable]
+public class Item
+{
+    public int id;
+    public string name;
+    public string type;
+}
+
+[System.Serializable]
+public class InventoryItem
+{
+    public int id;
+    public string name;
+    public string type;
+    public bool equipped;
+}
+
+public class GameManager : MonoBehaviour
 {
     public Text messageText;
     public Text tournamentsText;
@@ -339,6 +367,108 @@ public class ClickerGameManager : MonoBehaviour
             else
             {
                 Debug.LogError("Failed to request restart.");
+            }
+        }
+    }
+
+
+    // 인벤---------------------------
+
+    public void GetItems()
+    {
+        StartCoroutine(GetItemsRequest());
+    }
+    
+    public void GetInventory(int userId)
+    {
+        StartCoroutine(GetInventoryRequest(userId));
+    }
+    
+    public void EquipItem(int userId, int itemId)
+    {
+        StartCoroutine(EquipItemRequest(userId, itemId));
+    }
+    
+    IEnumerator GetItemsRequest()
+    {
+        using (UnityWebRequest www = UnityWebRequest.Get($"{serverUrl}/items"))
+        {
+            yield return www.SendWebRequest();
+    
+            if (www.result == UnityWebRequest.Result.Success)
+            {
+                ItemsResponse response = JsonUtility.FromJson<ItemsResponse>(www.downloadHandler.text);
+    
+                if (response != null)
+                {
+                    foreach (var item in response.items)
+                    {
+                        Debug.Log($"Item ID: {item.id}, Name: {item.name}, Type: {item.type}");
+                    }
+                }
+                else
+                {
+                    Debug.LogError("Failed to parse items response");
+                }
+            }
+            else
+            {
+                Debug.LogError("Failed to get items.");
+            }
+        }
+    }
+    
+    IEnumerator GetInventoryRequest(int userId)
+    {
+        using (UnityWebRequest www = UnityWebRequest.Get($"{serverUrl}/user/{userId}/inventory"))
+        {
+            yield return www.SendWebRequest();
+    
+            if (www.result == UnityWebRequest.Result.Success)
+            {
+                InventoryResponse response = JsonUtility.FromJson<InventoryResponse>(www.downloadHandler.text);
+    
+                if (response != null)
+                {
+                    foreach (var item in response.inventory)
+                    {
+                        Debug.Log($"Item ID: {item.id}, Name: {item.name}, Type: {item.type}, Equipped: {item.equipped}");
+                    }
+                }
+                else
+                {
+                    Debug.LogError("Failed to parse inventory response");
+                }
+            }
+            else
+            {
+                Debug.LogError("Failed to get inventory.");
+            }
+        }
+    }
+    
+    IEnumerator EquipItemRequest(int userId, int itemId)
+    {
+        using (UnityWebRequest www = UnityWebRequest.Post($"{serverUrl}/user/{userId}/equipItem/{itemId}", new WWWForm()))
+        {
+            yield return www.SendWebRequest();
+    
+            if (www.result == UnityWebRequest.Result.Success)
+            {
+                BasicResponse response = JsonUtility.FromJson<BasicResponse>(www.downloadHandler.text);
+    
+                if (response != null && response.success)
+                {
+                    Debug.Log("Item equipped/unequipped successfully");
+                }
+                else
+                {
+                    Debug.LogError($"Failed to equip/unequip item. {response?.message}");
+                }
+            }
+            else
+            {
+                Debug.LogError("Failed to equip/unequip item.");
             }
         }
     }
