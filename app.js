@@ -41,6 +41,18 @@ db.serialize(() => {
         end_date TEXT
     )
   `);
+
+
+  // 사용자 일일 출석 정보 테이블 생성
+  db.run(`
+    CREATE TABLE IF NOT EXISTS daily_attendance (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        UNIQUE(user_id, date),
+        FOREIGN KEY(user_id) REFERENCES users(id)
+    )
+  `);
 });
 
 
@@ -219,6 +231,62 @@ app.get('/user/:userId/info', (req, res) => {
             });
         } else {
             res.status(404).json({ error: 'User not found' });
+        }
+    });
+});
+
+
+// 클라이언트에서 호출할 함수: 일일 출석 체크 및 출석 보상 확인
+app.post('/user/:userId/checkAttendance', (req, res) => {
+    const userId = req.params.userId;
+    const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD 형식으로 변환
+
+    // 오늘의 날짜로 이미 출석한 기록이 있는지 확인
+    db.get('SELECT * FROM daily_attendance WHERE user_id = ? AND date = ?', [userId, currentDate], (err, attendance) => {
+        if (err) {
+            console.error(err.message);
+            res.status(500).json({ error: 'Internal Server Error' });
+        } else if (attendance) {
+            // 이미 출석한 경우
+            res.json({ success: true, alreadyAttended: true, message: 'Already attended today' });
+        } else {
+            // 출석하지 않은 경우, 출석 기록 저장
+            db.run(
+                'INSERT INTO daily_attendance (user_id, date) VALUES (?, ?)',
+                [userId, currentDate],
+                function (err) {
+                    if (err) {
+                        console.error(err.message);
+                        res.status(500).json({ error: 'Internal Server Error' });
+                    } else {
+                        // 출석 보상 계산 및 응답 전송
+                        const reward = calculateDailyReward();
+                        res.json({ success: true, alreadyAttended: false, reward, message: 'Attendance recorded' });
+                    }
+                }
+            );
+        }
+    });
+});
+
+// 출석 보상 계산 함수
+function calculateDailyReward() {
+    // 일일 출석 보상 로직 (예: 7일 연속 출석 시 더 좋은 보상)
+    // 플레이 상황에 따라 다르게 재구현
+    return Math.floor(Math.random() * 100) + 50; // 랜덤한 골드 보상 (50에서 150까지)
+}
+
+// 클라이언트에서 호출할 함수: 재시작 요청
+app.post('/user/:userId/requestRestart', (req, res) => {
+    const userId = req.params.userId;
+
+    // 일일 출석 정보 초기화 (하루라도 빠지면 재시작)
+    db.run('DELETE FROM daily_attendance WHERE user_id = ?', [userId], (err) => {
+        if (err) {
+            console.error(err.message);
+            res.status(500).json({ error: 'Internal Server Error' });
+        } else {
+            res.json({ success: true, message: 'Restart requested successfully' });
         }
     });
 });
