@@ -31,7 +31,6 @@ public class UserInformationResponse
     public int gold;
 }
 
-// 응답 클래스
 [System.Serializable]
 public class DailyAttendanceResponse
 {
@@ -231,7 +230,9 @@ public class ClickerGameManager : MonoBehaviour
     {
         StartCoroutine(RequestRestartRequest(userId));
     }
-    
+
+
+    /*    
     IEnumerator CheckAttendanceRequest(int userId)
     {
         using (UnityWebRequest www = UnityWebRequest.Post($"{serverUrl}/user/{userId}/checkAttendance", new WWWForm()))
@@ -271,6 +272,50 @@ public class ClickerGameManager : MonoBehaviour
             }
         }
     }
+    */
+
+
+    IEnumerator CheckAttendanceRequest(int userId)
+    {
+        using (UnityWebRequest www = UnityWebRequest.Post($"{serverUrl}/user/{userId}/checkAttendance", new WWWForm()))
+        {
+            yield return www.SendWebRequest();
+    
+            if (www.result == UnityWebRequest.Result.Success)
+            {
+                DailyAttendanceResponse response = JsonUtility.FromJson<DailyAttendanceResponse>(www.downloadHandler.text);
+    
+                if (response != null)
+                {
+                    if (response.success)
+                    {
+                        if (response.alreadyAttended)
+                        {
+                            Debug.Log("Already attended today.");
+                        }
+                        else
+                        {
+                            Debug.Log($"Attendance recorded. Reward: {response.reward} gold");
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogError($"Failed to check attendance. {response.message}");
+                    }
+                }
+                else
+                {
+                    Debug.LogError("Failed to parse attendance response");
+                }
+            }
+            else
+            {
+                Debug.LogError("Failed to check attendance.");
+            }
+        }
+    }
+    
+    
     
     IEnumerator RequestRestartRequest(int userId)
     {
