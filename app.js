@@ -53,6 +53,28 @@ db.serialize(() => {
         FOREIGN KEY(user_id) REFERENCES users(id)
     )
   `);
+
+  // 아이템 및 인벤토리 테이블 생성
+  db.run(`
+      CREATE TABLE IF NOT EXISTS items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          type TEXT NOT NULL
+      )
+  `);
+  
+  db.run(`
+      CREATE TABLE IF NOT EXISTS inventory (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          item_id INTEGER NOT NULL,
+          equipped BOOLEAN NOT NULL DEFAULT 0,
+          FOREIGN KEY(user_id) REFERENCES users(id),
+          FOREIGN KEY(item_id) REFERENCES items(id)
+      )
+  `);
+
+  
 });
 
 
@@ -344,6 +366,50 @@ app.post('/user/:userId/requestRestart', (req, res) => {
             res.status(500).json({ error: 'Internal Server Error' });
         } else {
             res.json({ success: true, message: 'Restart requested successfully' });
+        }
+    });
+});
+
+
+
+// 클라이언트에서 호출할 함수: 아이템 목록 조회
+app.get('/items', (req, res) => {
+    db.all('SELECT * FROM items', (err, items) => {
+        if (err) {
+            console.error(err.message);
+            res.status(500).json({ error: 'Internal Server Error' });
+        } else {
+            res.json({ items });
+        }
+    });
+});
+
+// 클라이언트에서 호출할 함수: 사용자의 인벤토리 조회
+app.get('/user/:userId/inventory', (req, res) => {
+    const userId = req.params.userId;
+
+    db.all('SELECT inventory.id, items.name, items.type, inventory.equipped FROM inventory JOIN items ON inventory.item_id = items.id WHERE user_id = ?', [userId], (err, inventory) => {
+        if (err) {
+            console.error(err.message);
+            res.status(500).json({ error: 'Internal Server Error' });
+        } else {
+            res.json({ inventory });
+        }
+    });
+});
+
+// 클라이언트에서 호출할 함수: 아이템 장착
+app.post('/user/:userId/equipItem/:itemId', (req, res) => {
+    const userId = req.params.userId;
+    const itemId = req.params.itemId;
+
+    // 아이템 장착 상태 업데이트
+    db.run('UPDATE inventory SET equipped = NOT equipped WHERE user_id = ? AND item_id = ?', [userId, itemId], function (err) {
+        if (err) {
+            console.error(err.message);
+            res.status(500).json({ error: 'Internal Server Error' });
+        } else {
+            res.json({ success: true, message: 'Item equipped/unequipped successfully' });
         }
     });
 });
