@@ -237,6 +237,7 @@ app.get('/user/:userId/info', (req, res) => {
 
 
 // 클라이언트에서 호출할 함수: 일일 출석 체크 및 출석 보상 확인
+/*
 app.post('/user/:userId/checkAttendance', (req, res) => {
     const userId = req.params.userId;
     const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD 형식으로 변환
@@ -268,10 +269,66 @@ app.post('/user/:userId/checkAttendance', (req, res) => {
         }
     });
 });
+*/
+
+// 클라이언트에서 호출할 함수: 일일 출석 체크 및 출석 보상 확인
+app.post('/user/:userId/checkAttendance', (req, res) => {
+    const userId = req.params.userId;
+    const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD 형식으로 변환
+
+    // 오늘의 날짜로 이미 출석한 기록이 있는지 확인
+    db.get('SELECT * FROM daily_attendance WHERE user_id = ? AND date = ?', [userId, currentDate], (err, attendance) => {
+        if (err) {
+            console.error(err.message);
+            res.status(500).json({ error: 'Internal Server Error' });
+        } else if (attendance) {
+            // 이미 출석한 경우
+            res.json({ success: true, alreadyAttended: true, message: 'Already attended today' });
+        } else {
+            // 출석하지 않은 경우, 출석 기록 저장
+            db.run(
+                'INSERT INTO daily_attendance (user_id, date) VALUES (?, ?)',
+                [userId, currentDate],
+                function (err) {
+                    if (err) {
+                        console.error(err.message);
+                        res.status(500).json({ error: 'Internal Server Error' });
+                    } else {
+                        // 7일 연속 출석 여부 확인
+                        checkConsecutiveAttendance(userId, currentDate, res);
+                    }
+                }
+            );
+        }
+    });
+});
+
+// 7일 연속 출석 여부 확인 함수
+function checkConsecutiveAttendance(userId, currentDate, res) {
+    // 최근 7일간의 출석 여부를 조회
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    db.all('SELECT * FROM daily_attendance WHERE user_id = ? AND date >= ? ORDER BY date DESC', [userId, sevenDaysAgo.toISOString().split('T')[0]], (err, attendanceRecords) => {
+        if (err) {
+            console.error(err.message);
+            res.status(500).json({ error: 'Internal Server Error' });
+        } else {
+            if (attendanceRecords.length === 7) {
+                // 최근 7일간 출석한 경우, 출석 보상 계산
+                const reward = calculateDailyReward();
+                res.json({ success: true, alreadyAttended: false, reward, message: 'Attendance recorded' });
+            } else {
+                res.json({ success: true, alreadyAttended: false, message: 'Attendance recorded' });
+            }
+        }
+    });
+}
+
 
 // 출석 보상 계산 함수
 function calculateDailyReward() {
-    // 일일 출석 보상 로직 (예: 7일 연속 출석 시 더 좋은 보상)
+    // 일일 출석 보상 로직 ( 7일 연속 출석 시 더 좋은 보상 )
     // 플레이 상황에 따라 다르게 재구현
     return Math.floor(Math.random() * 100) + 50; // 랜덤한 골드 보상 (50에서 150까지)
 }
